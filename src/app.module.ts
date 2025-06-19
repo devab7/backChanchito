@@ -9,7 +9,10 @@ import { CuotasModule } from './cuotas/cuotas.module';
 @Module({
   imports: [
     CarsModule,
-    ConfigModule.forRoot(), // para poder cargar variables de entorno
+    // ConfigModule.forRoot(), // para poder cargar variables de entorno
+    ConfigModule.forRoot({
+      ignoreEnvFile: true, // 👈 esto evita usar .env local y fuerza variables del entorno (como las de Railway)
+    }),
 
     // TypeOrmModule.forRoot({ // conectando a la base de datos
     //   type: 'postgres',
