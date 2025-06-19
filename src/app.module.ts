@@ -41,6 +41,8 @@ console.log('>>> DATABASE_URL desde NestJS:', process.env.DATABASE_URL); // 👈
         };
       },
     }),
+    ClientesModule, 
+    CuotasModule
 
 
   ],
