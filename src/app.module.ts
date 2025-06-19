@@ -5,13 +5,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientesModule } from './clientes/clientes.module';
 import { CuotasModule } from './cuotas/cuotas.module';
 
+console.log('>>> DATABASE_URL desde NestJS:', process.env.DATABASE_URL); // 👈 Aquí imprimimos el valor real
 
 @Module({
   imports: [
     CarsModule,
     // ConfigModule.forRoot(), // para poder cargar variables de entorno
     ConfigModule.forRoot({
-      ignoreEnvFile: true, // 👈 esto evita usar .env local y fuerza variables del entorno (como las de Railway)
+      ignoreEnvFile: true, // esto evita usar .env local y fuerza variables del entorno (como las de Railway)
     }),
 
     // TypeOrmModule.forRoot({ // conectando a la base de datos
@@ -24,6 +25,8 @@ import { CuotasModule } from './cuotas/cuotas.module';
     //   autoLoadEntities: true,
     //   synchronize: true,
     // }), ClientesModule, CuotasModule,
+
+    
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
