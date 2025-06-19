@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CarsModule } from './cars/cars.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientesModule } from './clientes/clientes.module';
 import { CuotasModule } from './cuotas/cuotas.module';
@@ -27,17 +27,20 @@ console.log('>>> DATABASE_URL desde NestJS:', process.env.DATABASE_URL); // 👈
     // }), ClientesModule, CuotasModule,
 
     
-    TypeOrmModule.forRootAsync({
-      useFactory: () => {
-        console.log('>>> DATABASE_URL cargado dinámicamente:', process.env.DATABASE_URL);
-        return {
-          type: 'postgres',
-          url: process.env.DATABASE_URL,
-          autoLoadEntities: true,
-          synchronize: true,
-        };
-      },
-    }),
+  TypeOrmModule.forRootAsync({
+    inject: [ConfigService],
+    useFactory: (config: ConfigService) => {
+      const dbUrl = config.get<string>('DATABASE_URL');
+      console.log('>>> DATABASE_URL con ConfigService:', dbUrl);
+      return {
+        type: 'postgres',
+        url: dbUrl,
+        autoLoadEntities: true,
+        synchronize: true,
+      };
+    },
+  }),
+
 
   ],
   controllers: [],
