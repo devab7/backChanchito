@@ -27,11 +27,16 @@ console.log('>>> DATABASE_URL desde NestJS:', process.env.DATABASE_URL); // 👈
     // }), ClientesModule, CuotasModule,
 
     
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-      autoLoadEntities: true,
-      synchronize: true, // ponlo en false en producción si no quieres que se altere el schema
+    TypeOrmModule.forRootAsync({
+      useFactory: () => {
+        console.log('>>> DATABASE_URL cargado dinámicamente:', process.env.DATABASE_URL);
+        return {
+          type: 'postgres',
+          url: process.env.DATABASE_URL,
+          autoLoadEntities: true,
+          synchronize: true,
+        };
+      },
     }),
 
   ],
