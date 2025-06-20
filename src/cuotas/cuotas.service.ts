@@ -6,6 +6,9 @@ import { Cuota } from './entities/cuota.entity';
 import { Raw, Repository } from 'typeorm';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 
+import { DateTime } from 'luxon';
+
+
 @Injectable()
 export class CuotasService {
 
@@ -64,22 +67,52 @@ export class CuotasService {
     return cuotas;
   }
 
-  async findAllCuotasDelDia() {
-    const today = new Date(); // 📅 Hora del servidor
-    const year = today.getFullYear();
-    const month = today.getMonth();
-    const day = today.getDate();
+  // async findAllCuotasDelDia() {
+  //   const today = new Date(); // 📅 Hora del servidor
+  //   const year = today.getFullYear();
+  //   const month = today.getMonth();
+  //   const day = today.getDate();
 
-    const startOfDay = new Date(year, month, day, 0, 0, 0);   // 00:00
-    const endOfDay = new Date(year, month, day, 23, 59, 59);  // 23:59
+  //   const startOfDay = new Date(year, month, day, 0, 0, 0);   // 00:00
+  //   const endOfDay = new Date(year, month, day, 23, 59, 59);  // 23:59
+
+  //   const cuotasDelDia = await this.cuotaRepository.find({
+  //     where: {
+  //       creadoEn: Raw(alias =>
+  //         `${alias} BETWEEN TIMESTAMP '${startOfDay.toISOString()}' AND TIMESTAMP '${endOfDay.toISOString()}'`
+  //       )
+  //     },
+  //     relations: ['cliente'], // opcional: incluye el cliente relacionado
+  //     order: { creadoEn: 'ASC' }
+  //   });
+
+  //   const totalDelDia = cuotasDelDia.reduce(
+  //     (sum, cuota) => sum + (Number(cuota.importe) || 0),
+  //     0
+  //   ).toFixed(2);
+
+  //   return {
+  //     fecha: today.toISOString().slice(0, 10),
+  //     totalCuotasDelDia: totalDelDia,
+  //     cuotas: cuotasDelDia
+  //   };
+  // }
+
+
+  async findAllCuotasDelDia() {
+    const zona = 'America/Lima';
+    const hoy = DateTime.now().setZone(zona);
+
+    const startOfDay = hoy.startOf('day').toISO(); // '2025-06-20T00:00:00.000-05:00'
+    const endOfDay = hoy.endOf('day').toISO();     // '2025-06-20T23:59:59.999-05:00'
 
     const cuotasDelDia = await this.cuotaRepository.find({
       where: {
         creadoEn: Raw(alias =>
-          `${alias} BETWEEN TIMESTAMP '${startOfDay.toISOString()}' AND TIMESTAMP '${endOfDay.toISOString()}'`
+          `${alias} BETWEEN TIMESTAMP '${startOfDay}' AND TIMESTAMP '${endOfDay}'`
         )
       },
-      relations: ['cliente'], // opcional: incluye el cliente relacionado
+      relations: ['cliente'],
       order: { creadoEn: 'ASC' }
     });
 
@@ -89,11 +122,14 @@ export class CuotasService {
     ).toFixed(2);
 
     return {
-      fecha: today.toISOString().slice(0, 10),
+      fecha: hoy.toISODate(),
       totalCuotasDelDia: totalDelDia,
       cuotas: cuotasDelDia
     };
   }
+
+
+
 
 
   findOne(id: number) {
