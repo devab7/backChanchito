@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClientesModule } from './clientes/clientes.module';
 import { CuotasModule } from './cuotas/cuotas.module';
 
-console.log('>>> DATABASE_URL desde NestJS:', process.env.DATABASE_URL); // 👈 Aquí imprimimos el valor real
+// console.log('>>> DATABASE_URL desde NestJS:', process.env.DATABASE_URL); // 👈 Aquí imprimimos el valor real
 
 @Module({
   imports: [

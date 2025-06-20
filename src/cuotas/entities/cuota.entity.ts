@@ -16,7 +16,7 @@ export class Cuota {
     @UpdateDateColumn({ type: 'timestamp' }) // generates the update date automatically
     actualizadoEn: Date;
 
-    @ManyToOne(() => Cliente, cliente => cliente.cuotas, { eager: true })
+    @ManyToOne(() => Cliente, cliente => cliente.cuotas, { eager: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'clienteId' })
     cliente: Cliente;
 
