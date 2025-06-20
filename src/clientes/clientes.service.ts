@@ -4,6 +4,8 @@ import { UpdateClienteDto } from './dto/update-cliente.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Raw, Repository } from 'typeorm';
 
+import { DateTime } from 'luxon';
+
 import { Cliente } from './entities/cliente.entity';
 import { Cuota } from 'src/cuotas/entities/cuota.entity';
 
@@ -53,60 +55,74 @@ export class ClientesService {
 
 
   // find a cliente by id
-  async findOne(id: number): Promise<any> {
-    const cliente = await this.clienteRepository.findOne({ where: { id }, relations: ['cuotas'] });
-    if (!cliente) return null;
-
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const daysInMonth = new Date(year, month, 0).getDate();
-
-    // 📌 **Consulta optimizada con ordenamiento ascendente**
-    const cuotasDelMes = await this.cuotaRepository.find({
-      where: {
-        cliente: { id },
-        creadoEn: Raw(alias => `EXTRACT(MONTH FROM ${alias}) = ${month} 
-                                AND EXTRACT(YEAR FROM ${alias}) = ${year}`)
-      },
-      order: { creadoEn: 'ASC' }
-    });
-
-    // 📌 **Mapear cuotas según el día**
-    const cuotasMap = new Map<number, number>();
-    cuotasDelMes.forEach(cuota => {
-      const dia = new Date(cuota.creadoEn).getDate();
-      cuotasMap.set(dia, cuota.importe);
-    });
-
-    // 📌 **Crear respuesta con días faltantes llenados con `0`**
-    const cuotasCompletas = Array.from({ length: daysInMonth }, (_, i) => {
-      const nuevaCuota = new Cuota();
-      nuevaCuota.creadoEn = new Date(year, month - 1, i + 1); // 📌 Asegura que sea una fecha válida
-      nuevaCuota.importe = cuotasMap.get(i + 1) ?? 0; // 📌 Asegura que sea un número válido
-      nuevaCuota.cliente = cliente;
-      return nuevaCuota;
-    });
-
-    // 📌 Calcular la suma total de las cuotas del mes
-    const totalCuotasMes = cuotasDelMes.reduce((total, cuota) => total + (Number(cuota.importe) || 0), 0);
 
 
+async findOne(id: number): Promise<any> {
+  const cliente = await this.clienteRepository.findOne({
+    where: { id },
+    relations: ['cuotas']
+  });
+  if (!cliente) return null;
 
-    // 📌 **Evitar referencia circular eliminando la relación en la respuesta**
-    return {
-      id: cliente.id,
-      dni: cliente.dni,
-      nombres: cliente.nombres,
-      telefono: cliente.telefono,
-      direccion: cliente.direccion,
-      lugarNacimiento: cliente.lugarNacimiento,
-      telefono2: cliente.telefono2,
-      cumpleanos: cliente.cumple,
-      cuotas: cuotasCompletas, // 🔥 Evita referencia circular al devolver solo datos planos
-      totalCuotasMes // 🔥 Agrega la suma total de las cuotas del mes
-    };
-  }
+  // ⏱️ Zona horaria controlada: Lima
+  const now = DateTime.now().setZone('America/Lima');
+  const year = now.year;
+  const month = now.month;
+  const daysInMonth = now.daysInMonth;
+
+  // 🔍 Filtra cuotas solo del mes actual usando zona horaria
+  const cuotasDelMes = await this.cuotaRepository.find({
+    where: {
+      cliente: { id },
+      creadoEn: Raw(
+        alias => `
+          EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${month}
+          AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${year}
+        `
+      )
+    },
+    order: { creadoEn: 'ASC' }
+  });
+
+  // 🧠 Mapear día → importe
+  const cuotasMap = new Map<number, number>();
+  cuotasDelMes.forEach(cuota => {
+    const fecha = DateTime.fromJSDate(cuota.creadoEn).setZone('America/Lima');
+    const dia = fecha.day;
+    cuotasMap.set(dia, cuota.importe);
+  });
+
+  // 📆 Rellenar días faltantes del mes
+  const cuotasCompletas: Cuota[] = Array.from({ length: daysInMonth! }, (_, i) => {
+    const nuevaCuota = new Cuota();
+    nuevaCuota.creadoEn = new Date(year, month - 1, i + 1);
+    nuevaCuota.importe = cuotasMap.get(i + 1) ?? 0;
+    nuevaCuota.cliente = cliente;
+    return nuevaCuota;
+  });
+
+
+  // 💰 Total del mes
+  const totalCuotasMes = cuotasDelMes.reduce(
+    (total, cuota) => total + (Number(cuota.importe) || 0),
+    0
+  );
+
+  // 🎁 Cliente formateado sin relaciones circulares
+  return {
+    id: cliente.id,
+    dni: cliente.dni,
+    nombres: cliente.nombres,
+    telefono: cliente.telefono,
+    direccion: cliente.direccion,
+    lugarNacimiento: cliente.lugarNacimiento,
+    telefono2: cliente.telefono2,
+    cumpleanos: cliente.cumple,
+    cuotas: cuotasCompletas,
+    totalCuotasMes
+  };
+}
+
 
 
 
