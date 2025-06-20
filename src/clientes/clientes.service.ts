@@ -55,8 +55,6 @@ export class ClientesService {
 
 
   // find a cliente by id
-
-
 async findOne(id: number): Promise<any> {
   const cliente = await this.clienteRepository.findOne({
     where: { id },
@@ -95,7 +93,10 @@ async findOne(id: number): Promise<any> {
   // 📆 Rellenar días faltantes del mes
   const cuotasCompletas: Cuota[] = Array.from({ length: daysInMonth! }, (_, i) => {
     const nuevaCuota = new Cuota();
-    nuevaCuota.creadoEn = new Date(year, month - 1, i + 1);
+    nuevaCuota.creadoEn = DateTime.fromObject({ year, month, day: i + 1 }, { zone: 'America/Lima' })
+    .startOf('day')
+    .toJSDate();
+
     nuevaCuota.importe = cuotasMap.get(i + 1) ?? 0;
     nuevaCuota.cliente = cliente;
     return nuevaCuota;
