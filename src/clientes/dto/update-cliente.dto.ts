@@ -4,9 +4,11 @@
 // export class UpdateClienteDto extends PartialType(CreateClienteDto) {}
 
 
-import { IsString, IsOptional, IsDateString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsDateString, Length, IsDate } from 'class-validator';
 
 export class UpdateClienteDto {
+  
   @IsOptional()
   @IsString()
   @Length(8, 8)
@@ -37,7 +39,13 @@ export class UpdateClienteDto {
   @Length(9, 9)
   telefono2?: string;
 
+  // @IsOptional()
+  // @IsDateString()
+  // cumple?: string;
+
   @IsOptional()
-  @IsDateString()
-  cumple?: string;
+  @IsDate()
+  @Type(() => Date)
+  cumple?: Date;
+
 }

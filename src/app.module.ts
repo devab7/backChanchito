@@ -10,7 +10,9 @@ import { CuotasModule } from './cuotas/cuotas.module';
 @Module({
   imports: [
     CarsModule,
+    
     // ConfigModule.forRoot(), // para poder cargar variables de entorno
+
     ConfigModule.forRoot({
       ignoreEnvFile: true,
       isGlobal: true, // 👈 esto es clave para que ConfigService esté disponible en todos los módulos

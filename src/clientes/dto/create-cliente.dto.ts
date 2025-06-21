@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsDateString, Length } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsDateString, Length, IsDate } from 'class-validator';
 
 export class CreateClienteDto {
     
@@ -29,8 +30,14 @@ export class CreateClienteDto {
   @Length(9, 9)
   telefono2?: string;
 
+  // @IsOptional()
+  // @IsDateString()
+  // cumple?: string;
+
   @IsOptional()
-  @IsDateString()
-  cumple?: string;
+  @IsDate()
+  @Type(() => Date)
+  cumple?: Date;
+
 
 }

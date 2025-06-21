@@ -55,84 +55,92 @@ export class ClientesService {
 
 
   // find a cliente by id
-async findOne(id: number): Promise<any> {
-  const cliente = await this.clienteRepository.findOne({
-    where: { id },
-    relations: ['cuotas']
-  });
-  if (!cliente) return null;
+  async findOne(id: number): Promise<any> {
+    const cliente = await this.clienteRepository.findOne({
+      where: { id },
+      relations: ['cuotas']
+    });
+    if (!cliente) return null;
 
-  // ⏱️ Zona horaria controlada: Lima
-  const now = DateTime.now().setZone('America/Lima');
-  const year = now.year;
-  const month = now.month;
-  const daysInMonth = now.daysInMonth;
+    // ⏱️ Zona horaria controlada: Lima
+    const now = DateTime.now().setZone('America/Lima');
+    const year = now.year;
+    const month = now.month;
+    const daysInMonth = now.daysInMonth;
 
-  // 🔍 Filtra cuotas solo del mes actual usando zona horaria
-  const cuotasDelMes = await this.cuotaRepository.find({
-    where: {
-      cliente: { id },
-      creadoEn: Raw(
-        alias => `
-          EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${month}
-          AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${year}
-        `
-      )
-    },
-    order: { creadoEn: 'ASC' }
-  });
+    // 🔍 Filtra cuotas solo del mes actual usando zona horaria
+    const cuotasDelMes = await this.cuotaRepository.find({
+      where: {
+        cliente: { id },
+        creadoEn: Raw(
+          alias => `
+            EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${month}
+            AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${year}
+          `
+        )
+      },
+      order: { creadoEn: 'ASC' }
+    });
 
-  // 🧠 Mapear día → importe
-  const cuotasMap = new Map<number, number>();
-  cuotasDelMes.forEach(cuota => {
-    const fecha = DateTime.fromJSDate(cuota.creadoEn).setZone('America/Lima');
-    const dia = fecha.day;
-    cuotasMap.set(dia, cuota.importe);
-  });
+    // 🧠 Mapear día → importe
+    const cuotasMap = new Map<number, number>();
+    cuotasDelMes.forEach(cuota => {
+      const fecha = DateTime.fromJSDate(cuota.creadoEn).setZone('America/Lima');
+      const dia = fecha.day;
+      cuotasMap.set(dia, cuota.importe);
+    });
 
-  // 📆 Rellenar días faltantes del mes
-  const cuotasCompletas: Cuota[] = Array.from({ length: daysInMonth! }, (_, i) => {
-    const nuevaCuota = new Cuota();
-    nuevaCuota.creadoEn = DateTime.fromObject({ year, month, day: i + 1 }, { zone: 'America/Lima' })
-    .startOf('day')
-    .toJSDate();
+    // 📆 Rellenar días faltantes del mes
+    const cuotasCompletas: Cuota[] = Array.from({ length: daysInMonth! }, (_, i) => {
+      const nuevaCuota = new Cuota();
+      nuevaCuota.creadoEn = DateTime.fromObject({ year, month, day: i + 1 }, { zone: 'America/Lima' })
+      .startOf('day')
+      .toJSDate();
 
-    nuevaCuota.importe = cuotasMap.get(i + 1) ?? 0;
-    nuevaCuota.cliente = cliente;
-    return nuevaCuota;
-  });
-
-
-  // 💰 Total del mes
-  const totalCuotasMes = cuotasDelMes.reduce(
-    (total, cuota) => total + (Number(cuota.importe) || 0),
-    0
-  );
-
-  // 🎁 Cliente formateado sin relaciones circulares
-  return {
-    id: cliente.id,
-    dni: cliente.dni,
-    nombres: cliente.nombres,
-    telefono: cliente.telefono,
-    direccion: cliente.direccion,
-    lugarNacimiento: cliente.lugarNacimiento,
-    telefono2: cliente.telefono2,
-    cumpleanos: cliente.cumple,
-    cuotas: cuotasCompletas,
-    totalCuotasMes
-  };
-}
+      nuevaCuota.importe = cuotasMap.get(i + 1) ?? 0;
+      nuevaCuota.cliente = cliente;
+      return nuevaCuota;
+    });
 
 
+    // 💰 Total del mes
+    const totalCuotasMes = cuotasDelMes.reduce(
+      (total, cuota) => total + (Number(cuota.importe) || 0),
+      0
+    );
 
+    // 🎁 Cliente formateado sin relaciones circulares
+    return {
+      id: cliente.id,
+      dni: cliente.dni,
+      nombres: cliente.nombres,
+      telefono: cliente.telefono,
+      direccion: cliente.direccion,
+      lugarNacimiento: cliente.lugarNacimiento,
+      telefono2: cliente.telefono2,
+      cumple: cliente.cumple,
+      cuotas: cuotasCompletas,
+      totalCuotasMes
+    };
+  }
+
+
+  // update a cliente by id
+  async update(id: number, updateClienteDto: UpdateClienteDto): Promise<Cliente> {
+    const cliente = await this.clienteRepository.preload({
+      id,
+      ...updateClienteDto,
+    });
+
+    if (!cliente) {
+      throw new NotFoundException(`No se encontró el cliente con ID ${id}`);
+    }
+
+    return this.clienteRepository.save(cliente);
+  }
 
 
   // delete a cliente by id
-  update(id: number, updateClienteDto: UpdateClienteDto) {
-    return `This action updates a #${id} cliente`;
-  }
-
   async remove(id: number) {
 
     const cliente = await this.clienteRepository.delete({ id });
