@@ -17,7 +17,7 @@ export class CuotasController {
     return this.cuotasService.findAll();
   }
 
-  @Get('resumen/dia')
+  @Get('reporte/dia')
   findAllDia() {
     return this.cuotasService.findAllCuotasDelDia();
   }
