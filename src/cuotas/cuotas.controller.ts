@@ -22,6 +22,12 @@ export class CuotasController {
     return this.cuotasService.findAllCuotasDelDia();
   }
 
+  @Get('reporte/cuotabase/:clienteId')
+  getCuotaBaseDelMes(@Param('clienteId', ParseIntPipe) clienteId: number) {
+    return this.cuotasService.obtenerCuotaBaseDelMes(clienteId); // puede devolver null sin drama
+  }
+
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.cuotasService.findOne(id);

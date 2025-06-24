@@ -60,8 +60,6 @@ export class CuotasService {
     }
   }
 
-
-
   findAll() {
     const cuotas = this.cuotaRepository.find({ order: { creadoEn: 'DESC' }}); 
     return cuotas;
@@ -127,6 +125,36 @@ export class CuotasService {
       cuotas: cuotasDelDia
     };
   }
+
+// Obtener la cuota base del mes para un cliente específico
+async obtenerCuotaBaseDelMes(clienteId: number) {
+  const zona = 'America/Lima';
+  const hoy = DateTime.now().setZone(zona);
+  const inicioMes = hoy.startOf('month').toISO();
+  const finMes = hoy.endOf('month').toISO();
+
+  const base = await this.cuotaRepository.findOne({
+    where: {
+      cliente: { id: clienteId },
+      creadoEn: Raw(alias =>
+        `${alias} BETWEEN TIMESTAMP '${inicioMes}' AND TIMESTAMP '${finMes}'`
+      )
+    },
+    order: { creadoEn: 'ASC' }
+  });
+
+  if (!base) return null;
+
+  return {
+    id: base.id,
+    importe: base.importe,
+    creadoEn: DateTime.fromJSDate(base.creadoEn).setZone(zona).toISO(),
+    clienteId
+  };
+}
+
+
+
 
 
 
