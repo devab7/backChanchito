@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { CuotasService } from './cuotas.service';
 import { CreateCuotaDto } from './dto/create-cuota.dto';
 import { UpdateCuotaDto } from './dto/update-cuota.dto';
@@ -22,10 +22,19 @@ export class CuotasController {
     return this.cuotasService.findAllCuotasDelDia();
   }
 
-  @Get('reporte/cuotabase/:clienteId')
-  getCuotaBaseDelMes(@Param('clienteId', ParseIntPipe) clienteId: number) {
-    return this.cuotasService.obtenerCuotaBaseDelMes(clienteId); // puede devolver null sin drama
+  // @Get('base-del-mes/:id')
+  // getCuotaBaseDelMes(@Param('id', ParseIntPipe) id: number) {
+  //   return this.cuotasService.obtenerCuotaBaseDelMes(id); // puede devolver null sin drama
+  // }
+
+  @Get('base-del-mes/:id')
+  getCuotaBaseDelMes(
+    @Param('id') id: number,
+    @Query('mes') mes?: string
+  ) {
+    return this.cuotasService.obtenerCuotaBaseDelMes(id, mes);
   }
+
 
 
   @Get(':id')

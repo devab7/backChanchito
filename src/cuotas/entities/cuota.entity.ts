@@ -1,5 +1,6 @@
 import { Cliente } from "src/clientes/entities/cliente.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { TipoPago } from "src/enums/tipo-pago.enum";
 
 @Entity()
 export class Cuota {
@@ -8,16 +9,21 @@ export class Cuota {
     id:number;
 
     @Column({ type: 'numeric', precision: 10, scale: 2 })
-    importe: number;
+    cuota: number;
 
-    @CreateDateColumn({ type: 'timestamp' }) // generates the creation date automatically
+    // Definiré manualmente, ya no depende del reloj del servidor
+    @Column({ type: 'timestamp' })
     creadoEn: Date;
 
-    @UpdateDateColumn({ type: 'timestamp' }) // generates the update date automatically
+    @Column({ type: 'timestamp' })
     actualizadoEn: Date;
 
     @ManyToOne(() => Cliente, cliente => cliente.cuotas, { eager: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'clienteId' })
     cliente: Cliente;
+
+    @Column({ type: 'enum', enum: TipoPago, default: TipoPago.EFECTIVO
+    })
+    tipoPago: TipoPago;
 
 }

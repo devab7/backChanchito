@@ -26,13 +26,20 @@ export class Cliente {
     telefono2?: string;
 
     @Column({ type: 'date', nullable: true })
-    cumple: Date;
+    cumple: Date | null;
 
-    @CreateDateColumn({ type: 'timestamp' }) // generates the creation date automatically
+    // @CreateDateColumn({ type: 'timestamp' }) // generates the creation date automatically
+    // creadoEn: Date;
+
+    // @UpdateDateColumn({ type: 'timestamp' }) // generates the update date automatically
+    // actualizadoEn: Date;
+
+    @Column({ type: 'timestamp' })
     creadoEn: Date;
 
-    @UpdateDateColumn({ type: 'timestamp' }) // generates the update date automatically
+    @Column({ type: 'timestamp' })
     actualizadoEn: Date;
+
 
     @OneToMany(() => Cuota, cuota => cuota.cliente)
     cuotas: Cuota[];

@@ -35,9 +35,9 @@ export class CreateClienteDto {
   // cumple?: string;
 
   @IsOptional()
-  @IsDate()
-  @Type(() => Date)
-  cumple?: Date;
+  @IsDateString()
+  cumple?: string;
+
 
 
 }

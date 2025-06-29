@@ -43,9 +43,14 @@ export class UpdateClienteDto {
   // @IsDateString()
   // cumple?: string;
 
+  // @IsOptional()
+  // @IsDate()
+  // @Type(() => Date)
+  // cumple?: Date;
+
   @IsOptional()
-  @IsDate()
-  @Type(() => Date)
-  cumple?: Date;
+  @IsDateString()
+  cumple?: string;
+
 
 }
