@@ -66,25 +66,18 @@ export class LoginService {
   // }
 
   async login(loginDto: LoginDto, res: Response) {
-  console.time('⏱ Login completo');
-
-  console.time('🔍 Buscar usuario');
+ 
   const usuario = await this.usuarioRepository.findOne({
     where: { username: loginDto.username }
   });
-  console.timeEnd('🔍 Buscar usuario');
 
   if (!usuario) {
-    console.timeEnd('⏱ Login completo');
     throw new UnauthorizedException('Credenciales inválidas');
   }
 
-  console.time('🔐 Validar contraseña');
   const passwordValido = await bcrypt.compare(loginDto.password, usuario.password);
-  console.timeEnd('🔐 Validar contraseña');
 
   if (!passwordValido) {
-    console.timeEnd('⏱ Login completo');
     throw new UnauthorizedException('Credenciales inválidas');
   }
 
@@ -94,28 +87,22 @@ export class LoginService {
     rol: usuario.rol
   };
 
-  console.time('🎟 Generar tokens');
   const accessToken = this.jwtService.sign(payload, {
     secret: process.env.JWT_SECRET,
-    expiresIn: '15m'
+    expiresIn: '60m'
   });
 
   const refreshToken = this.jwtService.sign(payload, {
     secret: process.env.JWT_REFRESH_SECRET,
     expiresIn: '7d'
   });
-  console.timeEnd('🎟 Generar tokens');
 
-  console.time('🍪 Setear cookie');
   res.cookie('refresh_token', refreshToken, {
     httpOnly: true,
     secure: true,
     sameSite: 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
-  console.timeEnd('🍪 Setear cookie');
-
-  console.timeEnd('⏱ Login completo');
 
   return {
     accessToken,

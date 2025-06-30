@@ -345,15 +345,45 @@ async update(id: number, updateClienteDto: UpdateClienteDto): Promise<any> {
 
   
 
-  private handleDBExceptions( error: any ) {
+  // private handleDBExceptions( error: any ) {
 
-    if ( error.code === '23505' )
-      throw new BadRequestException(error.detail);
+  //   if ( error.code === '23505' )
+  //     throw new BadRequestException(error.detail);
     
-    this.logger.error(error)
-    // console.log(error)
-    throw new InternalServerErrorException('Unexpected error, check server logs');
+  //   this.logger.error(error)
+  //   // console.log(error)
+  //   throw new InternalServerErrorException('Unexpected error, check server logs');
 
+  // }
+
+  private handleDBExceptions(error: any) {
+
+    if (error.code === '23505') {
+      const detail = error.detail || '';
+
+      if (detail.includes('(dni)')) {
+        throw new BadRequestException('Ya existe un cliente con ese DNI');
+      }
+
+      if (detail.includes('(nombres)')) {
+        throw new BadRequestException('Ya existe un cliente con ese nombre');
+      }
+
+      if (detail.includes('(telefono)')) {
+        throw new BadRequestException('Ya existe un cliente con ese teléfono');
+      }
+
+      if (detail.includes('(telefono2)')) {
+        throw new BadRequestException('Ya existe un cliente con el teléfono 2');
+      }
+
+      // Si no identificamos el campo duplicado:
+      throw new BadRequestException('Este registro ya existe');
+    }
+
+    this.logger.error(error);
+    throw new InternalServerErrorException('Ocurrió un error inesperado. Revisá los logs del servidor.');
   }
+
 
 }

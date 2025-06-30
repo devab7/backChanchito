@@ -54,6 +54,13 @@ export class LoginController {
     return { message: 'Sesión cerrada exitosamente' };
   }
 
+  @Get('debug-cookies')
+  debug(@Req() req: Request) {
+    console.log('Cookies disponibles:', req.cookies);
+    return { cookies: req.cookies };
+  }
+
+
 
   // @Post()
   // create(@Body() createLoginDto: CreateLoginDto) {

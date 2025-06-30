@@ -16,10 +16,10 @@ export class Cliente {
     @Column({ type: 'char', unique: true, length: 9 })
     telefono: string;
 
-    @Column({ type: 'varchar', length: 200, nullable: true })
+    @Column({ type: 'varchar', nullable: true })
     direccion: string;
 
-    @Column({ type: 'varchar', length: 100, nullable: true })
+    @Column({ type: 'varchar', nullable: true })
     lugarNacimiento: string;
 
     @Column({ type: 'char', length: 9, unique: true, nullable: true })
