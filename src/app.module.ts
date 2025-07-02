@@ -13,7 +13,7 @@ import { LoginModule } from './login/login.module';
   imports: [
     CarsModule,
     
-    ConfigModule.forRoot(), // para poder cargar variables de entorno
+    // ConfigModule.forRoot(), // para poder cargar variables de entorno
 
     ConfigModule.forRoot({
       ignoreEnvFile: true,
@@ -46,8 +46,9 @@ import { LoginModule } from './login/login.module';
       },
     }),
     ClientesModule, 
-    CuotasModule
-
+    CuotasModule,
+    UsuarioModule, 
+    LoginModule
 
   ],
   controllers: [],

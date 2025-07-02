@@ -4,14 +4,18 @@ import { ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser'; // 👈 agregá esto arriba
 
 async function bootstrap() {
+
+    // console.log('>> DB URL:', process.env.DATABASE_URL); // 👈 Aquí lo verás en logs de Railway
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    origin: ['http://localhost:4200', 'https://front-chancito.vercel.app'],
+    // origin: ['http://localhost:4200'],
+    origin: ['https://chanchitook.vercel.app', 'https://www.chanchitorojo.com'],
     credentials: true,
   });
+
 
   app.use(cookieParser()); // 👈 acá lo agregás
 
@@ -21,7 +25,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
-
+  console.log('✅ NestJS está por iniciar...');
   await app.listen(process.env.PORT ?? 3000);
+  // await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
+
 }
 bootstrap();
