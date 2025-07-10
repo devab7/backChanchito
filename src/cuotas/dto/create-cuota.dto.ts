@@ -1,5 +1,5 @@
 import { Transform, Type } from "class-transformer";
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional } from "class-validator";
+import { IsEnum, IsISO8601, IsNotEmpty, IsNumber, IsOptional } from "class-validator";
 import { TipoPago } from "src/enums/tipo-pago.enum";
 
 export class CreateCuotaDto {
@@ -20,5 +20,16 @@ export class CreateCuotaDto {
     message: 'Solo se permite: Efectivo, Interbank o BCP'
   })
   tipoPago?: TipoPago;
+
+
+  // 🛠️ TEMPORAL: ESTO RETIRAR PARA PRODUCCIÓN
+  @IsOptional()
+  @IsISO8601({}, { message: 'creadoEn debe ser ISO válido' })
+  creadoEn?: string;
+
+  @IsOptional()
+  @IsISO8601({}, { message: 'actualizadoEn debe ser ISO válido' })
+  actualizadoEn?: string;
+  // 🛠️ TEMPORAL: ESTO RETIRAR PARA PRODUCCIÓN
   
 }

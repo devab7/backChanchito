@@ -6,7 +6,7 @@ import { Cuota } from './entities/cuota.entity';
 import { Raw, Repository } from 'typeorm';
 import { Cliente } from 'src/clientes/entities/cliente.entity';
 
-import { rangoDelDiaLima, fechaDateLima, formatearFechaALima, rangoDelMesLima  } from 'src/utils/fecha.helper'; 
+import { rangoDelDiaLima, fechaDateLima, formatearFechaALima, rangoDelMesLima, ahoraLima, toISOConZonaLima  } from 'src/utils/fecha.helper'; 
 
 import { DateTime } from 'luxon';
 import { TipoPago } from 'src/enums/tipo-pago.enum';
@@ -39,28 +39,65 @@ export class CuotasService {
 
       if (!cliente) throw new NotFoundException('Cliente no encontrado');
 
-      const cuotaExistenteHoy = await this.cuotaRepository.findOne({
+
+      // 🔒 NUEVO BLOQUE: valida duplicado por fecha exacta cuando agregue cuota para fechas pasadas con postman, quitar cuando ya se suba todas ls cuotas pasadas
+      const fechaInput = (createCuotaDto as any).creadoEn
+        ? new Date((createCuotaDto as any).creadoEn)
+        : fechaDateLima(); // fallback si no viene fecha
+
+      const existeCuotaMismaFecha = await this.cuotaRepository.findOne({
         where: {
           cliente: { id: createCuotaDto.clienteId },
-          creadoEn: Raw(alias =>
-            `${alias} BETWEEN TIMESTAMP '${inicioDelDia}' AND TIMESTAMP '${finDelDia}'`
-          )
+          creadoEn: Raw(alias => `
+            DATE_TRUNC('day', ${alias} AT TIME ZONE 'America/Lima') = DATE '${fechaInput.toISOString().slice(0, 10)}'
+          `)
         }
       });
 
-      if (cuotaExistenteHoy) {
+      if (existeCuotaMismaFecha) {
         throw new ConflictException({
-          message: `${cliente.nombres} ya registró una cuota hoy`,
+          message: `${cliente.nombres} ya tiene una cuota registrada el ${fechaInput.toLocaleDateString('es-PE')}`,
           statusCode: 409
         });
       }
+      // 🔚 FIN DEL BLOQUE NUEVO
+
+
+      // Validación original: solo para el día actual (cuando ya suba todas als cuotas pasada y entonces elimino el neuvo blqoue de arriba)
+      // const cuotaExistenteHoy = await this.cuotaRepository.findOne({
+      //   where: {
+      //     cliente: { id: createCuotaDto.clienteId },
+      //     creadoEn: Raw(alias =>
+      //       `${alias} BETWEEN TIMESTAMP '${inicioDelDia}' AND TIMESTAMP '${finDelDia}'`
+      //     )
+      //   }
+      // });
+
+      // if (cuotaExistenteHoy) {
+      //   throw new ConflictException({
+      //     message: `${cliente.nombres} ya registró una cuota hoy`,
+      //     statusCode: 409
+      //   });
+      // }
 
       const cuota = this.cuotaRepository.create({
         cuota: createCuotaDto.cuota,
         cliente,
         tipoPago: createCuotaDto.tipoPago ?? TipoPago.EFECTIVO,
-        creadoEn: fechaDateLima(),
-        actualizadoEn: fechaDateLima()
+        // Descomentar estas 2 lineas para producción
+        // creadoEn: fechaDateLima(),
+        // actualizadoEn: fechaDateLima(),
+
+        // 🛠️ TEMPORAL: permitir fechas personalizadas si vienen en el body, luego eliminar cuando ya estoy en producción
+        creadoEn: (createCuotaDto as any).creadoEn
+          ? new Date((createCuotaDto as any).creadoEn) // ya viene en formato con zona horaria lima
+          : fechaDateLima(), // si viene sin zona se le pone la zona con mi helper
+
+        actualizadoEn: (createCuotaDto as any).actualizadoEn
+          ? new Date((createCuotaDto as any).actualizadoEn)
+          : fechaDateLima()    
+        // TEMPORAL: permitir fechas personalizadas si vienen en el body, luego eliminar cuando ya estoy en producción
+
       });
 
       const cuotaGuardada = await this.cuotaRepository.save(cuota);
@@ -69,8 +106,8 @@ export class CuotasService {
         id: cuotaGuardada.id,
         cuota: cuotaGuardada.cuota,
         tipoPago: cuotaGuardada.tipoPago,
-        creadoEn: formatearFechaALima(cuotaGuardada.creadoEn),
-        actualizadoEn: formatearFechaALima(cuotaGuardada.actualizadoEn),
+        creadoEn: toISOConZonaLima(cuotaGuardada.creadoEn),
+        actualizadoEn: toISOConZonaLima(cuotaGuardada.actualizadoEn),
         cliente: {
           id: cliente.id,
           nombres: cliente.nombres
@@ -121,71 +158,6 @@ export class CuotasService {
     return cuotas;
   }
 
-  // Obtener cuotas del día
-  // async findAllCuotasDelDia() {
-  //   const zona = 'America/Lima';
-  //   const hoy = DateTime.now().setZone(zona);
-
-  //   const startOfDay = hoy.startOf('day').toISO(); // '2025-06-20T00:00:00.000-05:00'
-  //   const endOfDay = hoy.endOf('day').toISO();     // '2025-06-20T23:59:59.999-05:00'
-
-  //   const cuotasDelDia = await this.cuotaRepository.find({
-  //     where: {
-  //       creadoEn: Raw(alias =>
-  //         `${alias} BETWEEN TIMESTAMP '${startOfDay}' AND TIMESTAMP '${endOfDay}'`
-  //       )
-  //     },
-  //     relations: ['cliente'],
-  //     order: { creadoEn: 'ASC' }
-  //   });
-
-  //   const totalDelDia = cuotasDelDia.reduce(
-  //     (sum, cuota) => sum + (Number(cuota.cuota) || 0),
-  //     0
-  //   ).toFixed(2);
-
-  //   return {
-  //     fecha: hoy.toISODate(),
-  //     totalCuotasDelDia: totalDelDia,
-  //     cuotas: cuotasDelDia
-  //   };
-  // }
-
-  // async findAllCuotasDelDia() {
-
-  //   const { desde: inicioDelDia, hasta: finDelDia } = rangoDelDiaLima();
-  //   const hoy = DateTime.now().setZone('America/Lima');
-
-  //   const cuotasDelDia = await this.cuotaRepository.find({
-  //     where: {
-  //       creadoEn: Raw(alias =>
-  //         `${alias} BETWEEN TIMESTAMP '${inicioDelDia}' AND TIMESTAMP '${finDelDia}'`
-  //       )
-  //     },
-  //     relations: ['cliente'],
-  //     order: { creadoEn: 'ASC' }
-  //   });
-
-  //   const totalDelDia = cuotasDelDia.reduce(
-  //     (sum, cuota) => sum + (Number(cuota.cuota) || 0),
-  //     0
-  //   ).toFixed(2);
-
-  //   return {
-  //     totalCuotasDelDia: totalDelDia,
-  //     cuotas: cuotasDelDia.map(cuota => ({
-  //       id: cuota.id,
-  //       cuota: cuota.cuota,
-  //       tipoPago: cuota.tipoPago,
-  //       creadoEn: formatearFechaALima(cuota.creadoEn),
-  //       actualizadoEn: formatearFechaALima(cuota.actualizadoEn),
-  //       cliente: {
-  //         id: cuota.cliente.id,
-  //         nombres: cuota.cliente.nombres
-  //       }
-  //     }))
-  //   };
-  // }
 
 
 async findAllCuotasDelDia() {
@@ -208,7 +180,6 @@ async findAllCuotasDelDia() {
       0
     ).toFixed(2)
   );
-
 
 
   const totalPorTipoPago = cuotasDelDia.reduce((acc, cuota) => {
@@ -239,38 +210,7 @@ async findAllCuotasDelDia() {
 }
 
 
-
-
-
-
-
 // Obtener la cuota base del mes para un cliente específico
-
-  // async obtenerCuotaBaseDelMes(clienteId: number) {
-  //   const { desde: inicioMes, hasta: finMes } = rangoDelMesLima(); // 
-
-  //   const cuotaBase = await this.cuotaRepository.findOne({
-  //     where: {
-  //       cliente: { id: clienteId },
-  //       creadoEn: Raw(alias =>
-  //         `${alias} BETWEEN TIMESTAMP '${inicioMes}' AND TIMESTAMP '${finMes}'`
-  //       )
-  //     },
-  //     order: { creadoEn: 'ASC' },
-  //     relations: ['cliente'] 
-  //   });
-
-  //   if (!cuotaBase) return null;
-
-  //   return {
-  //     id: cuotaBase.id,
-  //     cuotaBase: cuotaBase.cuota, 
-  //     creadoEn: formatearFechaALima(cuotaBase.creadoEn), 
-  //     clienteId,
-  //     clienteNombres: cuotaBase.cliente.nombres
-  //   }
-    
-  // }
 
   async obtenerCuotaBaseDelMes(clienteId: number, mes?: string) {
     const zona = 'America/Lima';
@@ -316,6 +256,73 @@ async findAllCuotasDelDia() {
       clienteNombres: cuotaBase.cliente.nombres
     };
   }
+
+
+
+
+
+
+  async obtenerResumenMensual(): Promise<{
+  resumen: {
+    mes: string;
+    total: number;
+    porTipoPago: { [tipo: string]: number };
+  }[];
+  totalAnual: number;
+}> {
+  const ahora = ahoraLima(); // ✔️ Tu helper, asegura zona 'America/Lima'
+  const añoActual = ahora.year;
+
+  const resumen: {
+    mes: string;
+    total: number;
+    porTipoPago: Record<string, number>;
+  }[] = [];
+
+  let totalAnual = 0;
+
+  for (let mes = 1; mes <= 12; mes++) {
+    const inicioMes = DateTime.fromObject({ year: añoActual, month: mes }, { zone: 'America/Lima' }).startOf('month');
+    const finMes = inicioMes.endOf('month');
+
+    const cuotasDelMes = await this.cuotaRepository.find({
+      where: {
+        creadoEn: Raw(alias =>
+          `${alias} BETWEEN TIMESTAMP '${inicioMes.toISO()}' AND TIMESTAMP '${finMes.toISO()}'`
+        )
+      }
+    });
+
+    const totalMes = cuotasDelMes.reduce(
+      (sum, cuota) => sum + (Number(cuota.cuota) || 0),
+      0
+    );
+
+    totalAnual += totalMes;
+
+    const porTipoPago = cuotasDelMes.reduce((acc, cuota) => {
+      const tipo = cuota.tipoPago;
+      const valor = Number(cuota.cuota) || 0;
+      acc[tipo] = (acc[tipo] || 0) + valor;
+      return acc;
+    }, {} as Record<string, number>);
+
+    resumen.push({
+      mes: inicioMes.setLocale('es').toFormat('MMMM'),
+      total: totalMes,
+      porTipoPago
+    });
+  }
+
+  return {
+    resumen,
+    totalAnual
+  };
+}
+
+
+
+
 
 
 

@@ -8,7 +8,8 @@ import { DateTime } from 'luxon';
 
 import { Cliente } from './entities/cliente.entity';
 import { Cuota } from 'src/cuotas/entities/cuota.entity';
-import { ahoraLima, fechaDateLima, formatearFechaALima, parseFechaCumpleDesdeFrontend, parseFechaISOALima } from 'src/utils/fecha.helper';
+import { ahoraLima, crearFechaLima, fechaDateLima, formatearFechaALima, parseFechaCumpleDesdeFrontend, parseFechaISOALima, toISOConZonaLima } from 'src/utils/fecha.helper';
+import { RetiroMesService } from 'src/retiro-mes/retiro-mes.service';
 
 @Injectable()
 export class ClientesService {
@@ -22,6 +23,8 @@ export class ClientesService {
 
     @InjectRepository(Cuota)
     private readonly cuotaRepository: Repository<Cuota>,
+
+    private readonly retiroMesService: RetiroMesService,
 
   ){}
 
@@ -62,27 +65,22 @@ export class ClientesService {
 
       return {
         id: clienteGuardado.id,
+        dni: clienteGuardado.dni,
         nombres: clienteGuardado.nombres,
         direccion: clienteGuardado.direccion,
         telefono: clienteGuardado.telefono,
         cumple: clienteGuardado.cumple
           ? clienteGuardado.cumple.toISOString().slice(0, 10)
           : null,
-        creadoEn: formatearFechaALima(clienteGuardado.creadoEn),
-        actualizadoEn: formatearFechaALima(clienteGuardado.actualizadoEn)
+
+        creadoEn: toISOConZonaLima(clienteGuardado.creadoEn),
+        actualizadoEn: toISOConZonaLima(clienteGuardado.actualizadoEn)
+
       };
     } catch (error) {
       this.handleDBExceptions(error);
     }
   }
-
-
-
-
-
-
-
-
 
   // list all clientes
   findAll() {
@@ -92,38 +90,8 @@ export class ClientesService {
 
   }
 
-// async findAll() {
-//   const clientes = await this.clienteRepository.find({
-//     order: {
-//       creadoEn: 'DESC',
-//       // id: 'DESC' // ⚠️ esto le da orden estable incluso si el día es el mismo
-//     } 
-//   });
 
-//   return clientes.map(cliente => ({
-//     id: cliente.id,
-//     dni: cliente.dni,
-//     nombres: cliente.nombres,
-//     telefono: cliente.telefono,
-//     telefono2: cliente.telefono2,
-//     direccion: cliente.direccion,
-//     lugarNacimiento: cliente.lugarNacimiento,
-//     cumple: cliente.cumple, // podés formatearla si lo necesita la vista
-//     creadoEn: formatearFechaALima(cliente.creadoEn),
-//     actualizadoEn: formatearFechaALima(cliente.actualizadoEn)
-//   }));
-// }
-
-
-
-
-
-
-
-
-
-  // async findOne(id: number): Promise<any> {
-
+  // async findOne(id: number, mes?: string): Promise<any> {
   //   const cliente = await this.clienteRepository.findOne({
   //     where: { id },
   //     relations: ['cuotas'],
@@ -131,31 +99,27 @@ export class ClientesService {
 
   //   if (!cliente) return null;
 
-  //   // Obtenemos la fecha actual en zona horaria de Lima y determinamos el año, mes y cantidad de días.
-  //   // En caso de que no se pueda calcular correctamente la cantidad de días del mes, lanzamos una excepción controlada.
-  //   const ahora = ahoraLima();
-  //   // const ahora = DateTime.fromObject({ year: 2025, month: 2 }, { zone: 'America/Lima' }); // para simular el mes de febrero
-  //   const year = ahora.year;
-  //   const month = ahora.month;
-  //   const daysInMonth = Number(ahora.daysInMonth);
-  //   if (!daysInMonth || isNaN(daysInMonth)) {
-  //     throw new BadRequestException(
-  //       `No se pudo determinar los días del mes para la fecha: ${ahora.toISO()}`
-  //     );
+  //   const ahora = DateTime.now().setZone('America/Lima');
+  //   const anio = ahora.year;
+  //   const mesInt = mes ? Number(mes) : ahora.month;
+
+  //   if (isNaN(mesInt) || mesInt < 1 || mesInt > 12) {
+  //     throw new BadRequestException(`Mes inválido: ${mes}`);
   //   }
 
-  //   // Trae las cuotas del mes del clliente
+  //   const fechaReferencia = DateTime.fromObject({ year: anio, month: mesInt }, { zone: 'America/Lima' });
+  //   const daysInMonth = fechaReferencia.daysInMonth;
+
   //   const cuotasDelMes = await this.cuotaRepository.find({
   //     where: {
   //       cliente: { id },
   //       creadoEn: Raw(alias => `
-  //         EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${month}
-  //         AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${year}
+  //         EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${mesInt}
+  //         AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${anio}
   //       `),
   //     },
   //     order: { creadoEn: 'DESC' },
   //   });
-
 
   //   const cuotasMap = new Map<number, number>();
   //   cuotasDelMes.forEach(cuota => {
@@ -163,20 +127,24 @@ export class ClientesService {
   //     cuotasMap.set(fecha.day, cuota.cuota);
   //   });
 
-  //   // Rellena los días del mes con las cuotas correspondientes. sino hay cuota para ese día, se asigna 0.
-  //   const cuotasCompletas: Cuota[] = Array.from({ length: daysInMonth }, (_, i) => {
-  //     const nuevaCuota = new Cuota();
-  //     nuevaCuota.creadoEn = DateTime.fromObject(
-  //       { year, month, day: i + 1 },
-  //       { zone: 'America/Lima' }
-  //     ).startOf('day').toJSDate();
+  //   const cuotasCompletas: Cuota[] = Array.from(
+  //     Array(daysInMonth),
+  //     (_, i) => {
+  //       const nuevaCuota = new Cuota();
+  //       nuevaCuota.creadoEn = DateTime.fromObject(
+  //         { year: anio, month: mesInt, day: i + 1 },
+  //         { zone: 'America/Lima' }
+  //       ).startOf('day').toJSDate();
 
-  //     nuevaCuota.cuota = cuotasMap.get(i + 1) ?? 0;
-  //     // nuevaCuota.cliente = cliente;
-  //     return nuevaCuota;
-  //   });
+  //       nuevaCuota.cuota = cuotasMap.get(i + 1) ?? 0;
 
-  //   // Suma el total de cuotas del mes
+  //       return nuevaCuota;
+  //     }
+  //   );
+
+
+
+
   //   const totalCuotasMes = cuotasDelMes.reduce(
   //     (total, cuota) => total + (Number(cuota.cuota) || 0),
   //     0
@@ -191,143 +159,170 @@ export class ClientesService {
   //     lugarNacimiento: cliente.lugarNacimiento,
   //     telefono2: cliente.telefono2,
   //     cumple: formatearFechaALima(cliente.cumple),
+  //     mes: mes?.padStart(2, '0') || ahora.month.toString().padStart(2, '0'),
+  //     anio,
   //     cuotasCompletas,
   //     totalCuotasMes
   //   };
-
   // }
 
-async findOne(id: number, mes?: string): Promise<any> {
-  const cliente = await this.clienteRepository.findOne({
-    where: { id },
-    relations: ['cuotas'],
-  });
-
-  if (!cliente) return null;
-
-  const ahora = DateTime.now().setZone('America/Lima');
-  const anio = ahora.year;
-  const mesInt = mes ? Number(mes) : ahora.month;
-
-  if (isNaN(mesInt) || mesInt < 1 || mesInt > 12) {
-    throw new BadRequestException(`Mes inválido: ${mes}`);
-  }
-
-  const fechaReferencia = DateTime.fromObject({ year: anio, month: mesInt }, { zone: 'America/Lima' });
-  const daysInMonth = fechaReferencia.daysInMonth;
-
-  const cuotasDelMes = await this.cuotaRepository.find({
-    where: {
-      cliente: { id },
-      creadoEn: Raw(alias => `
-        EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${mesInt}
-        AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${anio}
-      `),
-    },
-    order: { creadoEn: 'DESC' },
-  });
-
-  const cuotasMap = new Map<number, number>();
-  cuotasDelMes.forEach(cuota => {
-    const fecha = DateTime.fromJSDate(cuota.creadoEn).setZone('America/Lima');
-    cuotasMap.set(fecha.day, cuota.cuota);
-  });
-
-  const cuotasCompletas: Cuota[] = Array.from(
-    Array(daysInMonth),
-    (_, i) => {
-      const nuevaCuota = new Cuota();
-      nuevaCuota.creadoEn = DateTime.fromObject(
-        { year: anio, month: mesInt, day: i + 1 },
-        { zone: 'America/Lima' }
-      ).startOf('day').toJSDate();
-
-      nuevaCuota.cuota = cuotasMap.get(i + 1) ?? 0;
-
-      return nuevaCuota;
-    }
-  );
 
 
+  async findOne(id: number, mes?: string): Promise<any> {
+    const cliente = await this.clienteRepository.findOne({
+      where: { id },
+      relations: ['cuotas'],
+    });
 
+    if (!cliente) return null;
 
-  const totalCuotasMes = cuotasDelMes.reduce(
-    (total, cuota) => total + (Number(cuota.cuota) || 0),
-    0
-  );
+    const ahora = ahoraLima();
+    const anio = ahora.year;
+    const mesInt = mes ? Number(mes) : ahora.month;
 
-  return {
-    id: cliente.id,
-    dni: cliente.dni,
-    nombres: cliente.nombres,
-    telefono: cliente.telefono,
-    direccion: cliente.direccion,
-    lugarNacimiento: cliente.lugarNacimiento,
-    telefono2: cliente.telefono2,
-    cumple: formatearFechaALima(cliente.cumple),
-    mes: mes?.padStart(2, '0') || ahora.month.toString().padStart(2, '0'),
-    anio,
-    cuotasCompletas,
-    totalCuotasMes
-  };
-}
-
-
-
-
-
-
-  // update a cliente by id
-  // async update(id: number, updateClienteDto: UpdateClienteDto): Promise<Cliente> {
-  //   const cliente = await this.clienteRepository.preload({
-  //     id,
-  //     ...updateClienteDto,
-  //   });
-
-  //   if (!cliente) {
-  //     throw new NotFoundException(`No se encontró el cliente con ID ${id}`);
-  //   }
-
-  //   return this.clienteRepository.save(cliente);
-  // }
-
-async update(id: number, updateClienteDto: UpdateClienteDto): Promise<any> {
-  try {
-    const dto = {
-      ...updateClienteDto,
-      cumple: updateClienteDto.cumple
-        ? parseFechaCumpleDesdeFrontend(updateClienteDto.cumple)
-        : undefined,
-      actualizadoEn: fechaDateLima() // ✅ Timestamp manual igual que en create
-    };
-
-    const cliente = await this.clienteRepository.preload({ id, ...dto });
-
-    if (!cliente) {
-      throw new NotFoundException(`No se encontró el cliente con ID ${id}`);
+    if (isNaN(mesInt) || mesInt < 1 || mesInt > 12) {
+      throw new BadRequestException(`Mes inválido: ${mes}`);
     }
 
-    const clienteActualizado = await this.clienteRepository.save(cliente);
+    if (mesInt > ahora.month) {
+      throw new BadRequestException("Seleccione un mes anterior o igual al mes actual.");
+    }
+
+    const fechaReferencia = crearFechaLima(anio, mesInt, 1); // 👉 Helper aplicado
+    const daysInMonth = fechaReferencia.daysInMonth;
+
+    const cuotasDelMes = await this.cuotaRepository.find({
+      where: {
+        cliente: { id },
+        creadoEn: Raw(alias => `
+          EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') = ${mesInt}
+          AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${anio}
+        `),
+      },
+      order: { creadoEn: 'DESC' },
+    });
+
+    const cuotasMap = new Map<number, number>();
+    cuotasDelMes.forEach(cuota => {
+      const fecha = DateTime.fromJSDate(cuota.creadoEn).setZone('America/Lima');
+      cuotasMap.set(fecha.day, cuota.cuota);
+    });
+
+    const cuotasCompletas: Cuota[] = Array.from(
+      Array(daysInMonth).fill(null),
+      (_, i) => {
+        const nuevaCuota = new Cuota();
+        nuevaCuota.creadoEn = crearFechaLima(anio, mesInt, i + 1)
+          .startOf('day')
+          .toJSDate();
+
+        nuevaCuota.cuota = cuotasMap.get(i + 1) ?? 0;
+
+        return nuevaCuota;
+      }
+    );
+
+    const totalCuotasMes = cuotasDelMes.reduce(
+      (total, cuota) => total + (Number(cuota.cuota) || 0),
+      0
+    );
+
+    // 🔍 Cuotas hasta el mes actual (NO hasta mes consultado)
+    const cuotasHastaMesActual = await this.cuotaRepository.find({
+      where: {
+        cliente: { id },
+        creadoEn: Raw(alias => `
+          EXTRACT(MONTH FROM ${alias} AT TIME ZONE 'America/Lima') <= ${ahora.month}
+          AND EXTRACT(YEAR FROM ${alias} AT TIME ZONE 'America/Lima') = ${anio}
+        `),
+      },
+    });
+
+    const totalAcumuladoHastaMesActual = cuotasHastaMesActual.reduce(
+      (total, cuota) => total + (Number(cuota.cuota) || 0),
+      0
+    );
+
+    // 🆕 Estado mensual de los retiros (acuerdo #2)
+    const estadoMensual = await this.retiroMesService.obtenerEstadoMensual(id);
+
+    // 🧮 Nuevo cálculo: saldoRealAcumulado (solo meses activos hasta el mes actual)
+    const mesesActivosHastaHoy = estadoMensual
+      .filter(m => m.estado === 'activo' && m.mes <= ahora.month)
+      .map(m => m.mes);
+
+    const cuotasDisponibles = cuotasHastaMesActual.filter(cuota => {
+      const fecha = DateTime.fromJSDate(cuota.creadoEn).setZone('America/Lima');
+      return mesesActivosHastaHoy.includes(fecha.month);
+    });
+
+    const saldoRealAcumulado = cuotasDisponibles.reduce(
+      (total, cuota) => total + (Number(cuota.cuota) || 0),
+      0
+    );
 
     return {
-      id: clienteActualizado.id,
-      nombres: clienteActualizado.nombres,
-      direccion: clienteActualizado.direccion,
-      telefono: clienteActualizado.telefono,
-      cumple: clienteActualizado.cumple
-        ? clienteActualizado.cumple.toISOString().slice(0, 10)
-        : null,
-      creadoEn: formatearFechaALima(clienteActualizado.creadoEn),
-      actualizadoEn: formatearFechaALima(clienteActualizado.actualizadoEn)
+      id: cliente.id,
+      dni: cliente.dni,
+      nombres: cliente.nombres,
+      telefono: cliente.telefono,
+      direccion: cliente.direccion,
+      lugarNacimiento: cliente.lugarNacimiento,
+      telefono2: cliente.telefono2,
+      cumple: formatearFechaALima(cliente.cumple),
+      mes: fechaReferencia.month,
+      anio,
+      cuotasCompletas,
+      totalCuotasMes,
+      totalAcumuladoHastaMesActual, // 💰 bruto hasta el mes actual
+      saldoRealAcumulado,           // 🧮 neto descontando meses retirados
+      estadoMensual,
     };
-  } catch (error) {
-    this.handleDBExceptions(error);
   }
-}
 
 
 
-  
+
+
+
+
+
+
+
+
+  async update(id: number, updateClienteDto: UpdateClienteDto): Promise<any> {
+    try {
+      const dto = {
+        ...updateClienteDto,
+        cumple: updateClienteDto.cumple
+          ? parseFechaCumpleDesdeFrontend(updateClienteDto.cumple)
+          : undefined,
+        actualizadoEn: fechaDateLima() // ✅ Timestamp manual igual que en create
+      };
+
+      const cliente = await this.clienteRepository.preload({ id, ...dto });
+
+      if (!cliente) {
+        throw new NotFoundException(`No se encontró el cliente con ID ${id}`);
+      }
+
+      const clienteActualizado = await this.clienteRepository.save(cliente);
+
+      return {
+        id: clienteActualizado.id,
+        nombres: clienteActualizado.nombres,
+        direccion: clienteActualizado.direccion,
+        telefono: clienteActualizado.telefono,
+        cumple: clienteActualizado.cumple
+          ? clienteActualizado.cumple.toISOString().slice(0, 10)
+          : null,
+        creadoEn: formatearFechaALima(clienteActualizado.creadoEn),
+        actualizadoEn: formatearFechaALima(clienteActualizado.actualizadoEn)
+      };
+    } catch (error) {
+      this.handleDBExceptions(error);
+    }
+  }
 
 
   // delete a cliente by id
@@ -345,16 +340,6 @@ async update(id: number, updateClienteDto: UpdateClienteDto): Promise<any> {
 
   
 
-  // private handleDBExceptions( error: any ) {
-
-  //   if ( error.code === '23505' )
-  //     throw new BadRequestException(error.detail);
-    
-  //   this.logger.error(error)
-  //   // console.log(error)
-  //   throw new InternalServerErrorException('Unexpected error, check server logs');
-
-  // }
 
   private handleDBExceptions(error: any) {
 

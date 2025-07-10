@@ -22,11 +22,6 @@ export class CuotasController {
     return this.cuotasService.findAllCuotasDelDia();
   }
 
-  // @Get('base-del-mes/:id')
-  // getCuotaBaseDelMes(@Param('id', ParseIntPipe) id: number) {
-  //   return this.cuotasService.obtenerCuotaBaseDelMes(id); // puede devolver null sin drama
-  // }
-
   @Get('base-del-mes/:id')
   getCuotaBaseDelMes(
     @Param('id') id: number,
@@ -34,6 +29,12 @@ export class CuotasController {
   ) {
     return this.cuotasService.obtenerCuotaBaseDelMes(id, mes);
   }
+
+  @Get('reporte/mensual')
+  getResumenMensual() {
+    return this.cuotasService.obtenerResumenMensual();
+  }
+
 
 
 

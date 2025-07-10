@@ -11,8 +11,8 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   app.enableCors({
-    // origin: ['http://localhost:4200'],
-    origin: ['https://chanchitook.vercel.app', 'https://www.chanchitorojo.com'],
+    origin: ['http://localhost:4200'],
+    // origin: ['https://www.chanchitorojo.com'],
     credentials: true,
   });
 

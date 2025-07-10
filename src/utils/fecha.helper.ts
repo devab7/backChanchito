@@ -113,6 +113,18 @@ export const parseFechaCumpleDesdeFrontend = (fecha: string): Date => {
 };
 
 
+export const crearFechaLima = (year: number, month: number, day: number): DateTime => {
+  return DateTime.fromObject({ year, month, day }, { zone: 'America/Lima' });
+};
 
+
+
+export const toISOConZonaLima = (fecha: Date | string): string => {
+  // 🔎 Este helper respeta la zona horaria Lima (-05:00)
+  // 👉 La consola del navegador lo vas a mostrar como UTC ("Z") al visualizarlo,
+  //     pero el string ISO devuelto conserva "-05:00" correctamente
+  const dt = DateTime.fromJSDate(new Date(fecha)).setZone(ZONA);
+  return dt.isValid ? dt.toISO() ?? '' : '';
+};
 
 
