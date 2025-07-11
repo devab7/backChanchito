@@ -69,6 +69,7 @@ export class ClientesService {
         nombres: clienteGuardado.nombres,
         direccion: clienteGuardado.direccion,
         telefono: clienteGuardado.telefono,
+        telefono2: clienteGuardado.telefono2,
         cumple: clienteGuardado.cumple
           ? clienteGuardado.cumple.toISOString().slice(0, 10)
           : null,

@@ -262,63 +262,148 @@ async findAllCuotasDelDia() {
 
 
 
-  async obtenerResumenMensual(): Promise<{
-  resumen: {
-    mes: string;
-    total: number;
-    porTipoPago: { [tipo: string]: number };
-  }[];
-  totalAnual: number;
-}> {
-  const ahora = ahoraLima(); // ✔️ Tu helper, asegura zona 'America/Lima'
-  const añoActual = ahora.year;
+//   async obtenerResumenMensual(): Promise<{ // OK: ANALIZADO, LIBRE DE DESFASES
+//   resumenMensual: {
+//     mes: string;
+//     total: number;
+//     porTipoPago: { [tipo: string]: number };
+//   }[];
+//   totalAnual: number;
+// }> {
+//   const ahora = ahoraLima(); // ✔️ Tu helper, asegura zona 'America/Lima'
+//   const añoActual = ahora.year;
 
-  const resumen: {
-    mes: string;
-    total: number;
-    porTipoPago: Record<string, number>;
-  }[] = [];
+//   const resumenMensual: {
+//     mes: string;
+//     total: number;
+//     porTipoPago: Record<string, number>;
+//   }[] = [];
 
-  let totalAnual = 0;
+//   let totalAnual = 0;
 
-  for (let mes = 1; mes <= 12; mes++) {
-    const inicioMes = DateTime.fromObject({ year: añoActual, month: mes }, { zone: 'America/Lima' }).startOf('month');
-    const finMes = inicioMes.endOf('month');
+//   for (let mes = 1; mes <= 12; mes++) {
+//     const inicioMes = DateTime.fromObject({ year: añoActual, month: mes }, { zone: 'America/Lima' }).startOf('month');
+//     const finMes = inicioMes.endOf('month');
 
-    const cuotasDelMes = await this.cuotaRepository.find({
-      where: {
-        creadoEn: Raw(alias =>
-          `${alias} BETWEEN TIMESTAMP '${inicioMes.toISO()}' AND TIMESTAMP '${finMes.toISO()}'`
-        )
-      }
-    });
+//     const cuotasDelMes = await this.cuotaRepository.find({
+//       where: {
+//         creadoEn: Raw(alias =>
+//           `${alias} BETWEEN TIMESTAMP '${inicioMes.toISO()}' AND TIMESTAMP '${finMes.toISO()}'`
+//         )
+//       }
+//     });
 
-    const totalMes = cuotasDelMes.reduce(
-      (sum, cuota) => sum + (Number(cuota.cuota) || 0),
-      0
-    );
+//     const totalMes = cuotasDelMes.reduce(
+//       (sum, cuota) => sum + (Number(cuota.cuota) || 0),
+//       0
+//     );
 
-    totalAnual += totalMes;
+//     totalAnual += totalMes;
 
-    const porTipoPago = cuotasDelMes.reduce((acc, cuota) => {
-      const tipo = cuota.tipoPago;
-      const valor = Number(cuota.cuota) || 0;
-      acc[tipo] = (acc[tipo] || 0) + valor;
-      return acc;
-    }, {} as Record<string, number>);
+//     const porTipoPago = cuotasDelMes.reduce((acc, cuota) => {
+//       const tipo = cuota.tipoPago;
+//       const valor = Number(cuota.cuota) || 0;
+//       acc[tipo] = (acc[tipo] || 0) + valor;
+//       return acc;
+//     }, {} as Record<string, number>);
 
-    resumen.push({
-      mes: inicioMes.setLocale('es').toFormat('MMMM'),
-      total: totalMes,
-      porTipoPago
-    });
+//     resumenMensual.push({
+//       mes: inicioMes.setLocale('es').toFormat('MMMM'),
+//       total: totalMes,
+//       porTipoPago
+//     });
+//   }
+
+//   return {
+//     resumenMensual,
+//     totalAnual
+//   };
+// }
+
+
+  async obtenerResumenMensual(): Promise<{ // OK: ANALIZADO, LIBRE DE DESFASES
+    resumenMensual: {
+      mes: string;
+      total: number;
+      porTipoPago: { nombre: string; monto: number }[];
+    }[];
+    totalAnual: number;
+    totalPorTipoPago: { nombre: string; monto: number }[]; // 🔧 AGREGADO
+  }> {
+    const ahora = ahoraLima(); // ✔️ Tu helper, asegura zona 'America/Lima'
+    const añoActual = ahora.year;
+    const mesActual = ahora.month; // 🔧 AGREGADO: limita hasta el mes Lima actual
+
+    const resumenMensual: {
+      mes: string;
+      total: number;
+      porTipoPago: { nombre: string; monto: number }[];
+    }[] = [];
+
+    let totalAnual = 0;
+
+    // 🔧 AGREGADO: acumulador global por tipo
+    const acumuladoGlobal: Record<string, number> = {};
+
+    for (let mes = 1; mes <= mesActual; mes++) {
+      const inicioMes = DateTime.fromObject(
+        { year: añoActual, month: mes },
+        { zone: 'America/Lima' }
+      ).startOf('month');
+
+      const finMes = inicioMes.endOf('month');
+
+      const cuotasDelMes = await this.cuotaRepository.find({
+        where: {
+          creadoEn: Raw(alias => `
+            ${alias} BETWEEN TIMESTAMP '${inicioMes.toISO()}' AND TIMESTAMP '${finMes.toISO()}'
+          `)
+        }
+      });
+
+      const totalMes = cuotasDelMes.reduce(
+        (sum, cuota) => sum + (Number(cuota.cuota) || 0),
+        0
+      );
+
+      totalAnual += totalMes;
+
+      const agrupadoPorTipo = cuotasDelMes.reduce((acc, cuota) => {
+        const tipo = cuota.tipoPago;
+        const valor = Number(cuota.cuota) || 0;
+        acc[tipo] = (acc[tipo] || 0) + valor;
+
+        // 🔧 AGREGADO: sumar al acumulador global
+        acumuladoGlobal[tipo] = (acumuladoGlobal[tipo] || 0) + valor;
+
+        return acc;
+      }, {} as Record<string, number>);
+
+      const porTipoPago = Object.entries(agrupadoPorTipo).map(([nombre, monto]) => ({
+        nombre,
+        monto
+      }));
+
+      resumenMensual.push({
+        mes: inicioMes.setLocale('es').toFormat('MMMM'),
+        total: totalMes,
+        porTipoPago
+      });
+    }
+
+    // 🔧 AGREGADO: transformar acumulador global como array final
+    const totalPorTipoPago = Object.entries(acumuladoGlobal).map(([nombre, monto]) => ({
+      nombre,
+      monto
+    }));
+
+    return {
+      resumenMensual,
+      totalAnual,
+      totalPorTipoPago // 🔧 AGREGADO
+    };
   }
 
-  return {
-    resumen,
-    totalAnual
-  };
-}
 
 
 

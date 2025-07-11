@@ -17,17 +17,17 @@ export class CreateClienteDto {
 
   @IsOptional()
   @IsString()
-  @Length(1, 200)
+  // @Length(1, 200)
   direccion?: string;
 
   @IsOptional()
   @IsString()
-  @Length(1, 100)
+  // @Length(1, 100)
   lugarNacimiento?: string;
 
   @IsOptional()
   @IsString()
-  @Length(9, 9)
+  // @Length(9, 9)
   telefono2?: string;
 
   // @IsOptional()

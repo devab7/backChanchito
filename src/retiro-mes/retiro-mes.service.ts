@@ -82,7 +82,7 @@ export class RetiroMesService {
   // }
 
   
-  async retirarMes(dto: RetirarMesDto): Promise<any> {
+  async retirarMes(dto: RetirarMesDto): Promise<any> { // OK: ANALIZADO, LIBRE DE DESFASES
     const { clienteId, mes } = dto;
     const ahora = ahoraLima();
     const anio = ahora.year;
@@ -111,7 +111,8 @@ export class RetiroMesService {
 
     if (mesesYaRetirados.includes(mes)) {
       const mesNombre = DateTime.fromObject({ month: mes }, { zone: 'America/Lima' }).setLocale('es').toFormat('MMMM');
-      throw new BadRequestException(`Ya retiraste el mes "${mesNombre}"`);
+      const mesNombreCapitalizado = mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1);
+      throw new BadRequestException(`Ya retiraste ${mesNombreCapitalizado}`);
     }
 
     const mesEsperado = (mesesYaRetirados.length === 0)
@@ -120,8 +121,10 @@ export class RetiroMesService {
 
     if (mes !== mesEsperado) {
       const esperadoNombre = DateTime.fromObject({ month: mesEsperado }, { zone: 'America/Lima' }).setLocale('es').toFormat('MMMM');
+      const esperadoNombreCapitalizado = esperadoNombre.charAt(0).toUpperCase() + esperadoNombre.slice(1);
       const recibidoNombre = DateTime.fromObject({ month: mes }, { zone: 'America/Lima' }).setLocale('es').toFormat('MMMM');
-      throw new BadRequestException(`No se puede retirar "${recibidoNombre}". El próximo mes disponible es "${esperadoNombre}"`);
+      throw new BadRequestException(`El próximo mes disponible es ${esperadoNombreCapitalizado}`);
+      // throw new BadRequestException(`No se puede retirar "${recibidoNombre}". El próximo mes disponible es "${esperadoNombre}"`);
     }
 
     // 📥 Guardar el retiro — sigue guardando como Date en base de datos

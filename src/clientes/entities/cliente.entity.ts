@@ -22,7 +22,7 @@ export class Cliente {
     @Column({ type: 'varchar', nullable: true })
     lugarNacimiento: string;
 
-    @Column({ type: 'char', length: 9, unique: true, nullable: true })
+    @Column({ type: 'char', length: 9, nullable: true })
     telefono2?: string;
 
     @Column({ type: 'date', nullable: true })
